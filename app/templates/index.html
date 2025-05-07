@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Flask MongoDB App{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Welcome to Flask MongoDB App</h1>
+        <p>This is a simple Flask application with MongoDB integration.</p>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h2>Users</h2>
+            </div>
+            <div class="card-body">
+                <form id="userForm" class="mb-4">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add User</button>
+                </form>
+                
+                <h3>User List</h3>
+                <ul id="userList" class="list-group">
+                    <!-- Users will be added here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load users on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchUsers();
+        
+        // Handle form submission
+        document.getElementById('userForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            
+            fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                fetchUsers();
+                document.getElementById('userForm').reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+    });
+    
+    // Fetch users from API
+    function fetchUsers() {
+        fetch('/api/users')
+            .then(response => response.json())
+            .then(users => {
+                const userList = document.getElementById('userList');
+                userList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.textContent = `${user.name} (${user.email})`;
+                    
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'btn btn-sm btn-danger';
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.addEventListener('click', () => deleteUser(user._id));
+                    
+                    li.appendChild(deleteButton);
+                    userList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+    
+    // Delete user by ID
+    function deleteUser(userId) {
+        fetch(`/api/users/${userId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Deleted:', data);
+            fetchUsers();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+</script>
+{% endblock %}
