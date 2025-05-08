@@ -22,6 +22,10 @@
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="profile_picture" class="form-label">Profile Picture</label>
+                        <input type="file" class="form-control" id="profile_picture" accept="image/*">
+                    </div>
                     <button type="submit" class="btn btn-primary">Add User</button>
                 </form>
                 
@@ -31,32 +35,89 @@
                 </ul>
             </div>
         </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h2>File Upload</h2>
+            </div>
+            <div class="card-body">
+                <form id="fileUploadForm" class="mb-4">
+                    <div class="mb-3">
+                        <label for="fileTitle" class="form-label">File Title</label>
+                        <input type="text" class="form-control" id="fileTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fileDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="fileDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fileUpload" class="form-label">Select File</label>
+                        <input type="file" class="form-control" id="fileUpload" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload File</button>
+                </form>
+                
+                <h3>Uploaded Files</h3>
+                <div id="fileList" class="list-group">
+                    <!-- Files will be added here -->
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Load users on page load
+    // Load users and files on page load
     document.addEventListener('DOMContentLoaded', () => {
         fetchUsers();
+        fetchFiles();
         
-        // Handle form submission
+        // Handle user form submission
         document.getElementById('userForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('email', document.getElementById('email').value);
+            
+            const profilePicture = document.getElementById('profile_picture').files[0];
+            if (profilePicture) {
+                formData.append('profile_picture', profilePicture);
+            }
             
             fetch('/api/users', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name, email })
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
                 console.log('Success:', data);
                 fetchUsers();
                 document.getElementById('userForm').reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+        
+        // Handle file upload form submission
+        document.getElementById('fileUploadForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('title', document.getElementById('fileTitle').value);
+            formData.append('description', document.getElementById('fileDescription').value);
+            formData.append('file', document.getElementById('fileUpload').files[0]);
+            
+            fetch('/api/files', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('File uploaded:', data);
+                fetchFiles();
+                document.getElementById('fileUploadForm').reset();
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -75,7 +136,25 @@
                 users.forEach(user => {
                     const li = document.createElement('li');
                     li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.textContent = `${user.name} (${user.email})`;
+                    
+                    const userInfo = document.createElement('div');
+                    userInfo.className = 'd-flex align-items-center';
+                    
+                    if (user.profile_picture_url) {
+                        const img = document.createElement('img');
+                        img.src = user.profile_picture_url;
+                        img.className = 'rounded-circle me-3';
+                        img.style.width = '40px';
+                        img.style.height = '40px';
+                        img.alt = user.name;
+                        userInfo.appendChild(img);
+                    }
+                    
+                    const userText = document.createElement('span');
+                    userText.textContent = `${user.name} (${user.email})`;
+                    userInfo.appendChild(userText);
+                    
+                    li.appendChild(userInfo);
                     
                     const deleteButton = document.createElement('button');
                     deleteButton.className = 'btn btn-sm btn-danger';
@@ -84,6 +163,63 @@
                     
                     li.appendChild(deleteButton);
                     userList.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+    
+    // Fetch files from API
+    function fetchFiles() {
+        fetch('/api/files')
+            .then(response => response.json())
+            .then(files => {
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML = '';
+                
+                files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item';
+                    
+                    const fileHeader = document.createElement('div');
+                    fileHeader.className = 'd-flex justify-content-between align-items-center';
+                    
+                    const title = document.createElement('h5');
+                    title.textContent = file.title;
+                    fileHeader.appendChild(title);
+                    
+                    const btnGroup = document.createElement('div');
+                    
+                    const downloadBtn = document.createElement('a');
+                    downloadBtn.href = file.file_url;
+                    downloadBtn.className = 'btn btn-sm btn-primary me-2';
+                    downloadBtn.textContent = 'Download';
+                    downloadBtn.target = '_blank';
+                    btnGroup.appendChild(downloadBtn);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-sm btn-danger';
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.addEventListener('click', () => deleteFile(file._id));
+                    btnGroup.appendChild(deleteBtn);
+                    
+                    fileHeader.appendChild(btnGroup);
+                    item.appendChild(fileHeader);
+                    
+                    if (file.description) {
+                        const desc = document.createElement('p');
+                        desc.className = 'mb-1 text-muted';
+                        desc.textContent = file.description;
+                        item.appendChild(desc);
+                    }
+                    
+                    const fileInfo = document.createElement('small');
+                    fileInfo.className = 'text-muted';
+                    fileInfo.textContent = `Uploaded on ${new Date(file.uploaded_at).toLocaleString()}`;
+                    item.appendChild(fileInfo);
+                    
+                    fileList.appendChild(item);
                 });
             })
             .catch(error => {
@@ -100,6 +236,21 @@
         .then(data => {
             console.log('Deleted:', data);
             fetchUsers();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+    
+    // Delete file by ID
+    function deleteFile(fileId) {
+        fetch(`/api/files/${fileId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('File deleted:', data);
+            fetchFiles();
         })
         .catch(error => {
             console.error('Error:', error);
