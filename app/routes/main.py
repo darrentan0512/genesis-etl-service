@@ -18,6 +18,7 @@ def get_users():
 @main_bp.route('/api/users', methods=['POST'])
 def create_user():
     user_data = request.json
+    print(user_data)
     user_id = User.create(user_data)
     return jsonify({'id': user_id, 'message': 'User created successfully'}), 201
 
