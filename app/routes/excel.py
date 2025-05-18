@@ -1,9 +1,18 @@
-from flask import Blueprint, send_file, current_app
+from flask import Blueprint, send_file, current_app, request, jsonify
+from werkzeug.utils import secure_filename
+import pandas as pd
 import os
+import logging
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
 excel_bp = Blueprint('excel', __name__, url_prefix='/api/excel')
+logger = logging.getLogger(__name__)
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 @excel_bp.route('/download')
 def download_excel():
@@ -37,3 +46,74 @@ def download_excel():
         # Log the error (in a real application, use proper logging)
         print(f"Error downloading file {SAMPLE_EXCEL_FILE}: {e}")
         return "Internal server error", 500
+    
+@excel_bp.route('/upload', methods=['POST'])
+def upload_excel():
+    # Check if the post request has the file part
+
+
+    if len(request.files) == 0:
+        return jsonify({
+            'success': False,
+            'error': 'No file part in the request'
+        }), 400
+    
+    # Only the first file is processed
+    
+    file_keys = list(request.files.keys())
+    file_name = file_keys[0]
+
+    file = request.files[file_name]
+    # If user doesn't select file, the browser submits an empty file without filename0
+    
+    if file and allowed_file(file.filename):
+        try:
+            filename = secure_filename(file.filename)
+            
+            # Make sure the resource directory exists
+            resource_dir = os.path.join(current_app.root_path, current_app.config['RESOURCE_FOLDER'])
+            os.makedirs(resource_dir, exist_ok=True)
+            
+            # Construct full file path
+            filepath = os.path.join(resource_dir, filename)
+            logger.info(f"Saving file to: {filepath}")
+            
+            # Save the file
+            file.save(filepath)
+            
+            # Process the Excel file
+            if filename.endswith('.csv'):
+                df = pd.read_csv(filepath)
+            else:
+                df = pd.read_excel(filepath)
+            
+            # Example processing: Get basic info about the file
+            file_info = {
+                'filename': filename,
+                'rows': len(df),
+                'columns': len(df.columns),
+                'column_names': df.columns.tolist(),
+                'preview': df.head(5).to_dict(orient='records')
+            }
+            
+            logger.info(f"Successfully processed file: {filename}")
+            
+            # Return JSON response
+            return jsonify({
+                'success': True,
+                'message': 'File uploaded successfully',
+                'file_info': file_info
+            }), 200
+                
+        except Exception as e:
+            logger.error(f"Error processing file: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 400
+    else:
+        allowed = ', '.join(current_app.config['ALLOWED_EXTENSIONS'])
+        return jsonify({
+            'success': False,
+            'error': f'Invalid file type. Allowed file types are: {allowed}'
+        }), 400

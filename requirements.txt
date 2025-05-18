@@ -4,3 +4,6 @@ pymongo==4.5.0
 python-dotenv==1.0.0
 flask-pymongo==2.3.0
 PyJWT==2.6.0
+sphinx==7.2.6
+flask-sphinx-themes==1.0.2
+sphinx-autoapi==3.0.0
