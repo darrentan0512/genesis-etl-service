@@ -85,8 +85,9 @@ def upload_excel():
             if filename.endswith('.csv'):
                 df = pd.read_csv(filepath)
             else:
-                df = pd.read_excel(filepath)
-            
+                df = pd.read_excel(filepath, dtype={'leave request start': 'object', 'leave request end' : 'object'})
+                print("Original dataframe:")
+                print(df.head())
             # Example processing: Get basic info about the file
             file_info = {
                 'filename': filename,
