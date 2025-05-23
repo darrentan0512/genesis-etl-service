@@ -172,3 +172,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# VS Code settings
+.vscode/
+# VS Code workspace settings
+.vscode-test/
+# VS Code extensions
+.vscode/extensions.json
+# VS Code workspace storage
+.vscode/workspaceStorage/
+# VS Code test results
+.vscode/test-results/
