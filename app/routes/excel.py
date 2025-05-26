@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 import os
 import logging
+from app.factory.dynamic_excel_factory import ExcelModelFactory
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
@@ -85,18 +86,17 @@ def upload_excel():
             if filename.endswith('.csv'):
                 df = pd.read_csv(filepath)
             else:
-                df = pd.read_excel(filepath, dtype={'leave request start': 'object', 'leave request end' : 'object'})
-                print("Original dataframe:")
-                print(df.head())
+                dynamic_excel_model_list = ExcelModelFactory.from_excel_file(filepath)
             # Example processing: Get basic info about the file
+            
             file_info = {
                 'filename': filename,
-                'rows': len(df),
-                'columns': len(df.columns),
-                'column_names': df.columns.tolist(),
-                'preview': df.head(5).to_dict(orient='records')
+                'rows': len(dynamic_excel_model_list),
+                'columns': len(dynamic_excel_model_list[0].get_columns()),
+                'column_names': dynamic_excel_model_list[0].get_columns(),
+                # 'preview': df.head(5).to_dict(orient='records')
             }
-            
+
             logger.info(f"Successfully processed file: {filename}")
             
             # Return JSON response

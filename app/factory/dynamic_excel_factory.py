@@ -10,18 +10,21 @@ class ExcelModelFactory:
     @staticmethod
     def from_dataframe(df: pd.DataFrame) -> List[DynamicExcelModel]:
         """Create model instances from pandas DataFrame."""
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, but got {type(df)}")
         models = []
         for _, row in df.iterrows():
             model = DynamicExcelModel()
             for column, value in row.items():
+                print(column, value)
                 model.set_attribute(column, value)
             models.append(model)
         return models
     
     @staticmethod
-    def from_excel_file(file_path: str, sheet_name: Optional[str] = None) -> List[DynamicExcelModel]:
+    def from_excel_file(file_path: str) -> List[DynamicExcelModel]:
         """Create model instances directly from Excel file."""
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
+        df = pd.read_excel(file_path)
         return ExcelModelFactory.from_dataframe(df)
     
     @staticmethod
