@@ -62,6 +62,7 @@ def upload_excel():
     # Only the first file is processed
     
     file_keys = list(request.files.keys())
+    print(file_keys)
     file_name = file_keys[0]
 
     file = request.files[file_name]
