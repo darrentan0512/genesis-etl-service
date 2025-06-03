@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import request, jsonify
 
 @dataclass
-class ErrorResponse:
+class ErrorResponse(Exception):
     title: str
     status: int
     detail: str

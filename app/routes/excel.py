@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import logging
 from app.factory.dynamic_excel_factory import ExcelModelFactory
+from app.models.error_response import ErrorResponse
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
@@ -62,7 +63,6 @@ def upload_excel():
     # Only the first file is processed
     
     file_keys = list(request.files.keys())
-    print(file_keys)
     file_name = file_keys[0]
 
     file = request.files[file_name]
@@ -84,12 +84,9 @@ def upload_excel():
             file.save(filepath)
             
             # Process the Excel file
-            if filename.endswith('.csv'):
-                df = pd.read_csv(filepath)
-            else:
-                dynamic_excel_model_list = ExcelModelFactory.from_excel_file(filepath)
-            # Example processing: Get basic info about the file
+            dynamic_excel_model_list = ExcelModelFactory.from_excel_file(filepath)
             
+            # Example processing: Get basic info about the file
             file_info = {
                 'filename': filename,
                 'rows': len(dynamic_excel_model_list),
@@ -107,12 +104,14 @@ def upload_excel():
                 'file_info': file_info
             }), 200
                 
+        except ErrorResponse as e:
+            return e.to_response()
         except Exception as e:
             logger.error(f"Error processing file: {str(e)}")
             return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 400
+            'success': False,
+            'error': f'File processing error {str(e)}'
+        }), 400
     else:
         allowed = ', '.join(current_app.config['ALLOWED_EXTENSIONS'])
         return jsonify({
