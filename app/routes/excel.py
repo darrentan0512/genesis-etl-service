@@ -5,6 +5,7 @@ import os
 import logging
 from app.factory.dynamic_excel_factory import ExcelModelFactory
 from app.models.error_response import ErrorResponse
+from app import mongo
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
@@ -86,6 +87,21 @@ def upload_excel():
             # Process the Excel file
             dynamic_excel_model_list = ExcelModelFactory.from_excel_file(filepath)
             
+            # Insert the objects into MongoDB
+            try:
+                collection = mongo.db.employee  # Replace with your collection name
+                documents = [model.to_dict() for model in dynamic_excel_model_list]
+                result = collection.insert_many(documents)
+                logger.info(f"Inserted {len(result.inserted_ids)} documents into MongoDB.")
+            except Exception as e:
+                logger.error(f"Error inserting documents into MongoDB: {str(e)}")
+                raise ErrorResponse(
+                    title="Database Error",
+                    status=500,
+                    detail="Failed to insert documents into the database.",
+                    errors=str(e)
+                )
+
             # Example processing: Get basic info about the file
             file_info = {
                 'filename': filename,
@@ -96,7 +112,7 @@ def upload_excel():
             }
 
             logger.info(f"Successfully processed file: {filename}")
-            
+
             # Return JSON response
             return jsonify({
                 'success': True,
