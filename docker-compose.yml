@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: genesis-etl-service
+    command: gunicorn -b 0.0.0.0:8080 wsgi:app
+    volumes:
+      - .:/app
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_ENV=dev
+      - MONGO_URI=mongodb://mongo:27017/genesisdb
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    container_name: genesis-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
