@@ -127,7 +127,6 @@ def get_employee(employee_id):
         }), 500
 
 # POST /api/employees - Create new employee
-# POST /api/employees - Create new employee
 @employee_bp.route('', methods=['POST'])
 def create_employee():
     try:

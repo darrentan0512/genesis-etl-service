@@ -90,15 +90,40 @@ def upload_excel():
             # Insert the objects into MongoDB
             try:
                 collection = mongo.db.employee  # Replace with your collection name
-                documents = [model.to_dict() for model in dynamic_excel_model_list]
-                result = collection.insert_many(documents)
-                logger.info(f"Inserted {len(result.inserted_ids)} documents into MongoDB.")
+                
+                # Process each document individually for upsert operation
+                upserted_count = 0
+                updated_count = 0
+                
+                for model in dynamic_excel_model_list:
+                    document = model.to_dict()
+                    # Assuming email is the unique identifier
+                    email = document.get('EMAIL_ADDRESS')
+                    
+                    if not email:
+                        logger.warning("Document missing email field, skipping...")
+                        continue
+                        
+                    # Use upsert to update if exists, create if doesn't
+                    result = collection.update_one(
+                        {"EMAIL_ADDRESS": email},  # Filter criteria
+                        {"$set": document},  # Update operation
+                        upsert=True  # Create if doesn't exist
+                    )
+                    
+                    if result.upserted_id:
+                        upserted_count += 1
+                    elif result.modified_count > 0:
+                        updated_count += 1
+                
+                logger.info(f"Operation completed: {upserted_count} new documents created, {updated_count} existing documents updated.")
+                
             except Exception as e:
-                logger.error(f"Error inserting documents into MongoDB: {str(e)}")
+                logger.error(f"Error upserting documents into MongoDB: {str(e)}")
                 raise ErrorResponse(
                     title="Database Error",
                     status=500,
-                    detail="Failed to insert documents into the database.",
+                    detail="Failed to upsert documents into the database.",
                     errors=str(e)
                 )
 
