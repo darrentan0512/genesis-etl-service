@@ -1,6 +1,7 @@
 
 from flask import Flask
 from flask_pymongo import PyMongo
+from flask_cors import CORS
 from app.config import Config
 
 # Initialize MongoDB
@@ -9,7 +10,11 @@ mongo = PyMongo()
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+    CORS(app, origins=[
+        'http://localhost:5173',  # Keep for local testing
+        'https://ui-genesis.vercel.app'
+    ])
+
     # Initialize extensions
     mongo.init_app(app)
     
