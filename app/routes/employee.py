@@ -2,6 +2,7 @@ from flask import Blueprint, send_file, current_app, request, jsonify
 from app.models.error_response import ErrorResponse
 from app import mongo
 from flask import Blueprint, request, jsonify
+from app.utils.validation_utils import validate_employee_dynamic
 from bson import ObjectId
 from bson.errors import InvalidId
 import re
@@ -165,7 +166,8 @@ def create_employee():
         
         # Validate only the mandatory fields
         mandatory_data = {field: employee_data[field] for field in mandatory_fields.keys()}
-        validation_errors = validate_employee(mandatory_data)
+        # validation_errors = validate_employee(mandatory_data)
+        validation_errors = validate_employee_dynamic(mandatory_data)
         
         if validation_errors:
             return jsonify({
