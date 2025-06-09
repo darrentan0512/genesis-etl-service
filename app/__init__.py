@@ -23,10 +23,12 @@ def create_app(config_class=Config):
     from app.routes.auth import auth_bp
     from app.routes.excel import excel_bp
     from app.routes.employee import employee_bp
+    from app.routes.employee_column_mapping import employee_column_mapping_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(excel_bp)
     app.register_blueprint(employee_bp)
+    app.register_blueprint(employee_column_mapping_bp)
     
     return app

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+import uuid
 from flask import Blueprint, send_file, current_app, request, jsonify
 from werkzeug.utils import secure_filename
 import pandas as pd
@@ -6,6 +8,7 @@ import logging
 from app.factory.dynamic_excel_factory import ExcelModelFactory
 from app.models.error_response import ErrorResponse
 from app import mongo
+from app.utils.validation_utils import COLUMN_VALIDATION_CONFIG
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
@@ -60,7 +63,7 @@ def upload_excel():
             'success': False,
             'error': 'No file part in the request'
         }), 400
-    
+    logger.info(f"Error here")
     # Only the first file is processed
     
     file_keys = list(request.files.keys())
@@ -86,7 +89,12 @@ def upload_excel():
             
             # Process the Excel file
             dynamic_excel_model_list = ExcelModelFactory.from_excel_file(filepath)
-            
+
+            # Convert
+            required_columns = [col['label'] for col in COLUMN_VALIDATION_CONFIG if col['required']]
+
+            dynamic_excel_columns = dynamic_excel_model_list[0].get_columns()
+            validate_store_columns(required_columns, dynamic_excel_columns)
             # Insert the objects into MongoDB
             try:
                 collection = mongo.db.employee  # Replace with your collection name
@@ -159,3 +167,53 @@ def upload_excel():
             'success': False,
             'error': f'Invalid file type. Allowed file types are: {allowed}'
         }), 400
+    
+def validate_store_columns(default_required_columns, excel_columns):
+    snake_case_columns = [col.upper().replace(' ', '_') for col in excel_columns]
+    missing_columns = [col for col in default_required_columns if col not in snake_case_columns]
+    if missing_columns:
+        raise ErrorResponse(
+            title="Validation Error",
+            status=400,
+            detail=f"Missing required columns: {', '.join(missing_columns)}",
+            errors=f"Required columns not found in Excel file"
+        )
+    required_columns = {}
+    non_required_columns = {}
+    for i, snake_col in enumerate(snake_case_columns):
+        original_label = excel_columns[i]
+        if snake_col in default_required_columns:
+            required_columns[snake_col] = {
+                'label': original_label,
+                'engine_name': snake_col,
+                'description': ''
+            }
+        else:
+            non_required_columns[snake_col] = {
+            'label': original_label,
+            'engine_name': snake_col,
+            'description': ''
+        }
+
+    # Create column mapping document
+    column_mapping = {
+        'required_columns': required_columns,
+        'non_required_columns': non_required_columns,
+        'created_at': datetime.now(timezone.utc),
+        'uuid': str(uuid.uuid4()),
+        'version': '1'
+    }
+
+    # Insert column mapping into MongoDB
+    try:
+        collection = mongo.db.employee_column_mapping
+        result = collection.insert_one(column_mapping)
+        logger.info(f"Inserted profile mapping column mapping with _id: {result.inserted_id}")
+    except Exception as e:
+        logger.error(f"Error inserting column mapping into MongoDB: {str(e)}")
+        raise ErrorResponse(
+            title="Database Error",
+            status=500,
+            detail="Failed to insert column mapping into the database.",
+            errors=str(e)
+        )
