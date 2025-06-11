@@ -329,7 +329,7 @@ def delete_employee(employee_id):
             }), 400
         
         # Check if employee exists
-        employee = mongo.find_one({'_id': ObjectId(employee_id)})
+        employee = mongo.db.employee.find_one({'_id': ObjectId(employee_id)})
         if not employee:
             return jsonify({
                 'success': False,
@@ -337,7 +337,7 @@ def delete_employee(employee_id):
             }), 404
         
         # Delete employee
-        result = mongo.delete_one({'_id': ObjectId(employee_id)})
+        result = mongo.db.employee.delete_one({'_id': ObjectId(employee_id)})
         
         if result.deleted_count == 0:
             return jsonify({
