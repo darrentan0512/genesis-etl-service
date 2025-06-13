@@ -12,7 +12,8 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     CORS(app, origins=[
         'http://localhost:5173',  # Keep for local testing
-        'https://ui-genesis.vercel.app'
+        'https://ui-genesis.vercel.app',
+        'https://ui-genesis-dev.vercel.app'
     ])
 
     # Initialize extensions
