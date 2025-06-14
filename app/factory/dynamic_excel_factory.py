@@ -31,9 +31,15 @@ class ExcelModelFactory:
         models = []
         for _, row in df.iterrows():
             model = DynamicExcelModel()
+            additional_fields = {}
             for column, value in row.items():
                 if value is not None and not pd.isna(value):
-                    model.set_attribute(column, value)
+                    if column.lower() in Config.MANDATORY_COLUMNS:
+                        model.set_attribute(column, value)
+                    else:
+                        additional_fields[column] = value
+            if len(additional_fields) > 0:
+                model.set_attribute('ADDITIONAL_FIELDS', additional_fields)
             models.append(model)
         return models
     
