@@ -107,15 +107,19 @@ def upload_excel():
                     document = model.to_dict()
                     # Assuming email is the unique identifier
                     email = document.get('EMAIL_ADDRESS')
+                    phone_number = document.get('PHONE_NUMBER')
                     
                     if not email:
                         logger.warning("Document missing email field, skipping...")
                         continue
                         
                     # Use upsert to update if exists, create if doesn't
-                    result = collection.update_one(
-                        {"EMAIL_ADDRESS": email},  # Filter criteria
-                        {"$set": document},  # Update operation
+                    result = collection.replace_one(
+                        {
+                            "EMAIL_ADDRESS": email,
+                            "PHONE_NUMBER": phone_number  # Both conditions must match
+                        },
+                        document,  # Update operation
                         upsert=True  # Create if doesn't exist
                     )
                     
