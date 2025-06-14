@@ -47,7 +47,9 @@ class DynamicExcelModel:
         """Convert value to appropriate Python type."""
         if pd.isna(value):
             return None
-        elif isinstance(value, (int, float, str, bool)):
+        elif isinstance(value, (int, float, str, bool)): # for primitive types
+            return value
+        elif isinstance(value, Dict): ## for iterable types 
             return value
         else:
             return str(value)
