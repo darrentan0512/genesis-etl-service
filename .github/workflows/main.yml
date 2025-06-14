@@ -2,7 +2,11 @@ name: Deploy to DigitalOcean
 
 on:
   push:
-    branches: [ '*' ]   # Trigger on push to any branch
+    branches: 
+      - '**'  # Trigger on all branches
+  pull_request:
+    branches: 
+      - main
   workflow_dispatch:    # Allow manual trigger
 
 jobs:
@@ -74,7 +78,7 @@ jobs:
           echo "Starting deployment..."
           
           # Navigate to your project directory
-          cd ../home/genesis/genesis-etl-service/ || { echo "Project directory not found"; exit 1; }
+          cd /home/genesis/genesis-etl-service/ || { echo "Project directory not found"; exit 1; }
           
           # Pull latest changes from git
           echo "Pulling latest changes..."
