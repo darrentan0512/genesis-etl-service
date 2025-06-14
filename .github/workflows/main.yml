@@ -24,6 +24,36 @@ jobs:
         echo "Testing Docker Compose..."
         docker compose config
         echo "Docker Compose configuration is valid!"
+        
+    - name: Test Full Docker Compose Deployment
+      run: |
+        echo "Testing full Docker Compose deployment..."
+        
+        # Start containers
+        docker compose up -d
+        
+        # Wait for containers to start
+        echo "Waiting for containers to start..."
+        sleep 15
+        
+        # Check if containers are running
+        echo "Checking container status..."
+        docker compose ps
+        
+        # Verify containers are healthy
+        if docker compose ps | grep -q "Up"; then
+          echo "✅ Containers are running successfully!"
+        else
+          echo "❌ Some containers failed to start"
+          docker compose logs
+          exit 1
+        fi
+        
+        # Clean up - stop and remove containers
+        echo "Cleaning up test containers..."
+        docker compose down
+        
+        echo "✅ Full Docker Compose test completed successfully!"
 
   deploy:
     runs-on: ubuntu-latest
