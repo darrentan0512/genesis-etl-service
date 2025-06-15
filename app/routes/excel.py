@@ -112,6 +112,22 @@ def upload_excel():
                     if not email:
                         logger.warning("Document missing email field, skipping...")
                         continue
+                
+                    is_part_time = document.get('IS_PART_TIME', '').upper()
+                    
+                    # Add AVAILABILITY column if IS_PART_TIME is 'NO'
+                    if is_part_time == 'NO':
+                        if 'AVAILABILITY' not in document:
+                            document['AVAILABILITY'] = None
+                        if 'ON_PLANNED_LEAVE' not in document:
+                            document['ON_PLANNED_LEAVE'] = []
+                                
+                    # Add ON_PLANNED_LEAVE column if IS_PART_TIME is 'YES'
+                    if is_part_time == 'YES':
+                        if 'AVAILABILITY' not in document:
+                            document['AVAILABILITY'] = []
+                        if 'ON_PLANNED_LEAVE' not in document:
+                            document['ON_PLANNED_LEAVE'] = None
                         
                     # Use upsert to update if exists, create if doesn't
                     result = collection.replace_one(

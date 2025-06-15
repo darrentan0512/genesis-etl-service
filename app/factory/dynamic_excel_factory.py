@@ -5,6 +5,7 @@ import json
 from app.config import Config  # Assuming Config is defined in app.config
 from app.models.dynamic_worker import DynamicExcelModel
 from app.models.error_response import ErrorResponse
+from app.utils.validation_utils import COLUMN_VALIDATION_CONFIG
 class ExcelModelFactory:
     """Factory class to create DynamicExcelModel instances from Excel data."""
     
@@ -56,16 +57,17 @@ class ExcelModelFactory:
 
     @staticmethod
     def validate_columns(model_object: List[DynamicExcelModel]):
-        mandatory_columns = Config.MANDATORY_COLUMNS
+        mandatory_columns = [col['label'] for col in COLUMN_VALIDATION_CONFIG if col['required']]
         missing_columns = []
         for column in mandatory_columns:
             # Check if the column exists in the first model object
             if not model_object[0].has_column(column):
                 missing_columns.append(column)
         if missing_columns:
+                errors = [{"field": col, "message": f"{col} is required"} for col in missing_columns]
                 raise ErrorResponse(
-                    title= "Validation Error",
+                    title="Validation Error",
                     status=400,
-                    detail= ', '.join([f"{col} is required" for col in missing_columns]),
-                    errors= ', '.join([f"{col} is required" for col in missing_columns]),
+                    detail="Missing required fields.",
+                    errors=errors
                 )
