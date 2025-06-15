@@ -2,7 +2,7 @@ from flask import Blueprint, send_file, current_app, request, jsonify
 from app.models.error_response import ErrorResponse
 from app import mongo
 from flask import Blueprint, request, jsonify
-from app.utils.validation_utils import validate_employee_dynamic
+from app.utils.validation_utils import validate_employee_custom, validate_employee_dynamic
 from bson import ObjectId
 from bson.errors import InvalidId
 import re
@@ -176,6 +176,21 @@ def create_employee():
                 'errors': validation_errors
             }), 400
         
+        is_part_time = employee_data.get('IS_PART_TIME', '').upper()
+        # Add AVAILABILITY column if IS_PART_TIME is 'NO'
+        if is_part_time == 'NO':
+            if 'AVAILABILITY' not in employee_data:
+                employee_data['AVAILABILITY'] = None
+            if 'ON_PLANNED_LEAVE' not in employee_data:
+                employee_data['ON_PLANNED_LEAVE'] = []
+                    
+        # Add ON_PLANNED_LEAVE column if IS_PART_TIME is 'YES'
+        if is_part_time == 'YES':
+            if 'AVAILABILITY' not in employee_data:
+                employee_data['AVAILABILITY'] = []
+            if 'ON_PLANNED_LEAVE' not in employee_data:
+                employee_data['ON_PLANNED_LEAVE'] = None
+        
         # Check if email already exists
         existing_employee = mongo.db.employee.find_one({
             'EMAIL_ADDRESS': employee_data['EMAIL_ADDRESS']
@@ -265,7 +280,7 @@ def update_employee(employee_id):
                 merged_mandatory_data[field] = existing_employee.get(field)
         
         # Validate merged mandatory data
-        validation_errors = validate_employee(merged_mandatory_data)
+        validation_errors = validate_employee_dynamic(merged_mandatory_data) + validate_employee_custom(update_data)
         if validation_errors:
             return jsonify({
                 'success': False,
