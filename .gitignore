@@ -183,3 +183,7 @@ cython_debug/
 .vscode/workspaceStorage/
 # VS Code test results
 .vscode/test-results/
+
+#DS Store files
+app/.DS_Store
+app/resources/.DS_Store
