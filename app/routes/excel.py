@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from io import BytesIO
 import uuid
-from flask import Blueprint, send_file, current_app, request, jsonify
+from flask import Blueprint, make_response, send_file, current_app, request, jsonify
 from werkzeug.utils import secure_filename
 import pandas as pd
 import os
@@ -8,6 +9,7 @@ import logging
 from app.factory.dynamic_excel_factory import ExcelModelFactory
 from app.models.error_response import ErrorResponse
 from app import mongo
+from app.routes.employee import serialize_employee
 from app.utils.validation_utils import COLUMN_VALIDATION_CONFIG
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
@@ -32,6 +34,61 @@ def download_excel():
         Flask response with the Excel file as an attachment
     """
     try:
+        headers = request.headers.get('category')
+        if headers == "DEFAULT":
+            # Get current date for filename
+            current_date = datetime.now().strftime("%Y%m%d")
+            filename = f"employee_default_{current_date}.xlsx"
+            
+            # Fetch all employees from MongoDB
+            employees = list(mongo.db.employee.find({}))
+            
+            if not employees:
+                return jsonify({
+                    'success': False,
+                    'message': 'No employee records found'
+                }), 404
+            
+            # Serialize employees (convert ObjectId and other non-serializable fields)
+            serialized_employees = [serialize_employee(emp) for emp in employees]
+            
+            # Convert to pandas DataFrame
+            df = pd.DataFrame(serialized_employees)
+            if '_id' in df.columns:
+                df = df.drop('_id', axis=1)
+            
+            # Create Excel file in memory
+            excel_buffer = BytesIO()
+            
+            # Write DataFrame to Excel buffer
+            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Employees', index=False)
+                
+                # Optional: Format the Excel sheet
+                worksheet = writer.sheets['Employees']
+                
+                # Auto-adjust column widths
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)  # Cap at 50 characters
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+            
+            excel_buffer.seek(0)
+            
+            # Create response with Excel file
+            response = make_response(excel_buffer.getvalue())
+            response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            return response
+        
         # Validate filename to prevent directory traversal attacks
         
         # Construct full file path
