@@ -11,6 +11,7 @@ from app.models.error_response import ErrorResponse
 from app import mongo
 from app.routes.employee import serialize_employee
 from app.utils.validation_utils import COLUMN_VALIDATION_CONFIG
+import ast
 
 SAMPLE_EXCEL_FILE = 'Sample Excel.xlsx'
 
@@ -57,6 +58,46 @@ def download_excel():
             if '_id' in df.columns:
                 df = df.drop('_id', axis=1)
             
+            if 'ADDITIONAL_FIELDS' in df.columns:
+            
+                # Extract the ADDITIONAL_FIELDS data
+                additional_fields_data = df['ADDITIONAL_FIELDS'].copy()
+                
+                # Remove the original ADDITIONAL_FIELDS column
+                df = df.drop('ADDITIONAL_FIELDS', axis=1)
+                
+                # Expand ADDITIONAL_FIELDS into separate columns
+                expanded_columns = pd.DataFrame(index=df.index)
+                
+                for idx, data in additional_fields_data.items():
+                    if data is not None and not pd.isna(data) and str(data).strip() and str(data).strip().lower() not in ['nan', 'none', 'null']:
+                        try:
+                            # Handle different data types
+                            if isinstance(data, dict):
+                                # Already a dictionary
+                                additional_fields_dict = data
+                            elif isinstance(data, str):
+                                # String representation of dictionary
+                                additional_fields_dict = ast.literal_eval(data)
+                            else:
+                                # Try to convert other object types to dict
+                                additional_fields_dict = ast.literal_eval(str(data))
+                            
+                            if isinstance(additional_fields_dict, dict):
+                                # Add the parsed fields as separate columns for this row
+                                for key, value in additional_fields_dict.items():
+                                    expanded_columns.loc[idx, key] = value
+                        except (ValueError, SyntaxError, TypeError) as e:
+                            print(f"Error parsing ADDITIONAL_FIELDS for row {idx}: {e}")
+                            print(f"Data type: {type(data)}, Data: {data}")
+                
+                # Only concatenate if we have expanded columns with data
+                if not expanded_columns.empty and len(expanded_columns.columns) > 0:
+                    # Concatenate the expanded columns with the main dataframe
+                    expanded_columns = expanded_columns.fillna('')
+                    expanded_columns = expanded_columns.replace(['nan', 'NaN', 'null', 'None', 'na', 'NA'], '')
+                    df = pd.concat([df, expanded_columns], axis=1)
+
             # Create Excel file in memory
             excel_buffer = BytesIO()
             
