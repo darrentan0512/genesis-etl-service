@@ -57,21 +57,24 @@ def get_employees():
         # Query parameters
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 10))
-        department = request.args.get('department')
-        role = request.args.get('role')
-        is_part_time = request.args.get('is_part_time')
+        search = request.args.get('search')
         
         skip = (page - 1) * limit
         
         # Build filter
         filter_query = {}
-        if department:
-            filter_query['DEPARTMENT'] = {'$regex': department, '$options': 'i'}
-        if role:
-            filter_query['ROLE'] = {'$regex': role, '$options': 'i'}
-        if is_part_time:
-            filter_query['IS_PART_TIME'] = is_part_time
         
+        if search:
+            # Use $or operator to search across multiple fields
+            or_conditions = [
+                {'NAME': {'$regex': search, '$options': 'i'}},
+                {'EMAIL_ADDRESS': {'$regex': search, '$options': 'i'}}
+            ]
+            
+            # For phone number, convert the stored number to string for regex search
+            or_conditions.append({'$expr': {'$regexMatch': {'input': {'$toString': '$PHONE_NUMBER'}, 'regex': search, 'options': 'i'}}})
+            
+            filter_query['$or'] = or_conditions
         # Execute query
         employees = list(mongo.db.employee.find(filter_query).skip(skip).limit(limit))
         total = mongo.db.employee.count_documents(filter_query)
