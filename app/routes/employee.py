@@ -291,18 +291,6 @@ def update_employee(employee_id):
                 'errors': validation_errors
             }), 400
         
-        # Check email uniqueness if email is being updated
-        if 'EMAIL_ADDRESS' in update_data:
-            email_exists = mongo.db.employee.find_one({
-                'EMAIL_ADDRESS': update_data['EMAIL_ADDRESS'],
-                '_id': {'$ne': ObjectId(employee_id)}
-            })
-            
-            if email_exists:
-                return jsonify({
-                    'success': False,
-                    'message': 'Employee with this email already exists'
-                }), 409
         
         # Add update timestamp
         update_data['updated_at'] = datetime.utcnow()
