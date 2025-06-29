@@ -21,12 +21,13 @@ services:
     container_name: genesis-mongo
     restart: always
     ports:
-      - "27017:27017"
+      - "0.0.0.0:27017:27017"  # Allow external connections
     volumes:
       - mongo_data:/data/db
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=SecurePassword123!
+    command: ["mongod", "--bind_ip_all"]  # Allow connections from any IP
 
 volumes:
   mongo_data:
