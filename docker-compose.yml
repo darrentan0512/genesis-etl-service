@@ -11,7 +11,7 @@ services:
       - "8080:8080"
     environment:
       - FLASK_ENV=dev
-      - MONGO_URI=mongodb://admin:SecurePassword123!@mongo:27017/genesisdb?authSource=admin
+      - MONGO_URI=${MONGO_URI}
       - PYTHONUNBUFFERED=1
     depends_on:
       - mongo
@@ -25,8 +25,8 @@ services:
     volumes:
       - mongo_data:/data/db
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=SecurePassword123!
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     command: ["mongod", "--bind_ip_all"]  # Allow connections from any IP
 
 volumes:
