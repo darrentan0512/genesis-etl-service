@@ -11,7 +11,7 @@ services:
       - "8080:8080"
     environment:
       - FLASK_ENV=dev
-      - MONGO_URI=mongodb://mongo:27017/genesisdb
+      - MONGO_URI=mongodb://admin:SecurePassword123!@mongo:27017/genesisdb?authSource=admin
       - PYTHONUNBUFFERED=1
     depends_on:
       - mongo
@@ -24,6 +24,9 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=SecurePassword123!
 
 volumes:
   mongo_data:
