@@ -78,7 +78,7 @@ jobs:
           echo "Starting deployment..."
           
           # Navigate to your project directory
-          cd /home/genesis/genesis-etl-service/ || { echo "Project directory not found"; exit 1; }
+          cd /root/app/genesis/ || { echo "Project directory not found"; exit 1; }
           
           # Pull latest changes from git
           echo "Pulling latest changes..."
