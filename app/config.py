@@ -8,4 +8,4 @@ class Config:
     MONGO_URI = os.environ.get('MONGO_URI') or 'mongodb://localhost:27017/flask_mongo_app'
     RESOURCE_FOLDER = os.environ.get('RESOURCE_FOLDER', 'resources')
     ALLOWED_EXTENSIONS = {'xls', 'xlsx'}
-    MANDATORY_COLUMNS = {'name', 'phone_number', 'email_address', 'department', 'role', 'end_of_probation', 'is_part_time'}
+    MANDATORY_COLUMNS = {'first_name','middle_name','last_name', 'phone_number', 'email_address', 'department', 'role', 'end_of_probation', 'is_part_time'}

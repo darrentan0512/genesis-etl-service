@@ -14,8 +14,11 @@ def validate_employee(employee_data):
     """Validate employee data"""
     errors = []
     
-    if not employee_data.get('NAME') or not employee_data['NAME'].strip():
-        errors.append('NAME is required')
+    if not employee_data.get('FIRST_NAME') or not employee_data['FIRST_NAME'].strip():
+        errors.append('First Name is required')
+
+    if not employee_data.get('LAST_NAME') or not employee_data['LAST_NAME'].strip():
+        errors.append('Last Name is required')
     
     email = employee_data.get('EMAIL_ADDRESS', '').strip()
     if not email or not is_valid_email(email):
@@ -67,7 +70,9 @@ def get_employees():
         if search:
             # Use $or operator to search across multiple fields
             or_conditions = [
-                {'NAME': {'$regex': search, '$options': 'i'}},
+                {'FIRST_NAME': {'$regex': search, '$options': 'i'}},
+                {'MIDDLE_NAME': {'$regex': search, '$options': 'i'}},
+                {'LAST_NAME': {'$regex': search, '$options': 'i'}},
                 {'EMAIL_ADDRESS': {'$regex': search, '$options': 'i'}}
             ]
             
@@ -99,6 +104,7 @@ def get_employees():
             'message': 'Error fetching employees',
             'error': str(e)
         }), 500
+    
 # GET /api/employees/<id> - Get employee by ID
 @employee_bp.route('/<employee_id>', methods=['GET'])
 def get_employee(employee_id):
