@@ -4,7 +4,14 @@ from typing import List, Dict, Any, Callable, Optional
 # Employee validation configuration
 COLUMN_VALIDATION_CONFIG = [
     {
-        'label': 'NAME',
+        'label': 'FIRST_NAME',
+        'type': 'string',
+        'required': True,
+        'min_length': 2,
+        'max_length': 100
+    },
+    {
+        'label': 'LAST_NAME',
         'type': 'string',
         'required': True,
         'min_length': 2,
