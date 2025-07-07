@@ -152,7 +152,8 @@ def create_employee():
         mandatory_fields = {
             'ROLE': lambda x: x.strip() if x else '',
             'EMAIL_ADDRESS': lambda x: x.lower().strip() if x else '',
-            'NAME': lambda x: x.upper().strip() if x else '',
+            'FIRST_NAME': lambda x: x.upper().strip() if x else '',
+            'LAST_NAME': lambda x: x.upper().strip() if x else '',
             'IS_PART_TIME': lambda x: x,
             'PHONE_NUMBER': lambda x: int(x) if str(x).isdigit() else None,
             'DEPARTMENT': lambda x: x.strip() if x else '',
@@ -265,7 +266,8 @@ def update_employee(employee_id):
         mandatory_field_processors = {
             'ROLE': lambda x: x.strip() if x else '',
             'EMAIL_ADDRESS': lambda x: x.lower().strip() if x else '',
-            'NAME': lambda x: x.upper().strip() if x else '',
+            'FIRST_NAME': lambda x: x.upper().strip() if x else '',
+            'LAST_NAME': lambda x: x.upper().strip() if x else '',
             'IS_PART_TIME': lambda x: x,
             'PHONE_NUMBER': lambda x: int(x) if str(x).isdigit() else None,
             'DEPARTMENT': lambda x: x.strip() if x else '',
