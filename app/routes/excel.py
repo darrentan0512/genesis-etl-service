@@ -63,6 +63,11 @@ def download_excel():
             # Serialize employees (convert ObjectId and other non-serializable fields)
             serialized_employees = [serialize_employee(emp) for emp in employees]
             
+            # Map ROLE PROFICIENCY from boolean to string
+            for emp in serialized_employees:
+                if 'ROLE_PROFICIENCY' in emp:
+                    emp['ROLE_PROFICIENCY'] = {True: 'Met', False: 'In Progress'}.get(emp['ROLE_PROFICIENCY'], emp['ROLE_PROFICIENCY'])
+
             # Convert to pandas DataFrame
             df = pd.DataFrame(serialized_employees)
             if '_id' in df.columns:
@@ -75,7 +80,7 @@ def download_excel():
                 
                 # Remove the original ADDITIONAL_FIELDS column
                 df = df.drop('ADDITIONAL_FIELDS', axis=1)
-                
+                print(df)
                 # Expand ADDITIONAL_FIELDS into separate columns
                 expanded_columns = pd.DataFrame(index=df.index)
                 
@@ -235,6 +240,13 @@ def upload_excel():
                         if 'ON_PLANNED_LEAVE' not in document:
                             document['ON_PLANNED_LEAVE'] = None
                         
+                    # ROLE PROFICIENCY logic
+                    role_proficiency = document.get('ROLE_PROFICIENCY', '').upper()
+                    if role_proficiency == 'MET':
+                        document['ROLE_PROFICIENCY'] = True
+                    elif role_proficiency == 'IN PROGRESS':
+                        document['ROLE_PROFICIENCY'] = False
+
                     # Use upsert to update if exists, create if doesn't
                     result = collection.replace_one(
                         {

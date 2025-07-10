@@ -26,6 +26,9 @@ def validate_employee(employee_data):
     
     if not employee_data.get('ROLE') or not employee_data['ROLE'].strip():
         errors.append('ROLE is required')
+
+    if not employee_data.get('ROLE_PROFICIENCY') or not employee_data['ROLE'].strip():
+        errors.append('ROLE PROFICIENCY is required')
     
     if not employee_data.get('DEPARTMENT') or not employee_data['DEPARTMENT'].strip():
         errors.append('DEPARTMENT is required')
@@ -52,6 +55,26 @@ def serialize_employee(employee):
     if employee and '_id' in employee:
         employee['_id'] = str(employee['_id'])
     return employee
+
+def map_employee_to_db(employee):
+    """Map application employee data to database format."""
+    db_employee = employee.copy()
+    rp = db_employee.get('ROLE_PROFICIENCY', '')
+    if isinstance(rp, str):
+        rp_upper = rp.strip().upper()
+        if rp_upper == "MET":
+            db_employee['ROLE_PROFICIENCY'] = True
+        elif rp_upper == "IN PROGRESS":
+            db_employee['ROLE_PROFICIENCY'] = False
+    return db_employee
+
+def map_db_to_employee(employee):
+    """Map database employee data to application format."""
+    app_employee = employee.copy()
+    rp = app_employee.get('ROLE_PROFICIENCY')
+    if isinstance(rp, bool):
+        app_employee['ROLE_PROFICIENCY'] = 'Met' if rp else 'In Progress'
+    return app_employee
 
 # GET /api/employees - Get all employees
 @employee_bp.route('', methods=['GET'])
@@ -86,10 +109,13 @@ def get_employees():
         
         # Serialize employees
         serialized_employees = [serialize_employee(emp) for emp in employees]
-        
+
+        # Apply mappings
+        mapped_employees = [map_db_to_employee(emp) for emp in serialized_employees]
+
         return jsonify({
             'success': True,
-            'data': serialized_employees,
+            'data': mapped_employees,
             'pagination': {
                 'page': page,
                 'limit': limit,
@@ -117,7 +143,9 @@ def get_employee(employee_id):
             }), 400
         
         employee = mongo.db.employee.find_one({'_id': ObjectId(employee_id)})
-        
+    
+        employee = map_db_to_employee(employee)
+
         if not employee:
             return jsonify({
                 'success': False,
@@ -157,7 +185,8 @@ def create_employee():
             'IS_PART_TIME': lambda x: x,
             'PHONE_NUMBER': lambda x: int(x) if str(x).isdigit() else None,
             'DEPARTMENT': lambda x: x.strip() if x else '',
-            'END_OF_PROBATION': lambda x: x
+            'END_OF_PROBATION': lambda x: x,
+            'ROLE_PROFICIENCY': lambda x: x.upper().strip() if x else ''
         }
         
         # Start with all incoming data (for dynamic fields)
@@ -211,6 +240,8 @@ def create_employee():
                 'success': False,
                 'message': 'Employee with this email already exists'
             }), 409
+        
+        employee_data = map_employee_to_db(employee_data)
         
         # Add timestamps
         employee_data['created_at'] = datetime.utcnow()
@@ -269,6 +300,7 @@ def update_employee(employee_id):
             'FIRST_NAME': lambda x: x.upper().strip() if x else '',
             'LAST_NAME': lambda x: x.upper().strip() if x else '',
             'IS_PART_TIME': lambda x: x,
+            'ROLE_PROFICIENCY': lambda x: x.upper().strip() if x else '',
             'PHONE_NUMBER': lambda x: int(x) if str(x).isdigit() else None,
             'DEPARTMENT': lambda x: x.strip() if x else '',
             'END_OF_PROBATION': lambda x: x
@@ -303,6 +335,10 @@ def update_employee(employee_id):
         # Add update timestamp
         update_data['updated_at'] = datetime.utcnow()
         
+        # Update and remap employee data
+        update_data = map_employee_to_db(update_data)
+
+        
         # Update employee (with all fields - mandatory + dynamic)
         result = mongo.db.employee.update_one(
             {'_id': ObjectId(employee_id)},
@@ -317,6 +353,7 @@ def update_employee(employee_id):
         
         # Fetch updated employee
         updated_employee = mongo.db.employee.find_one({'_id': ObjectId(employee_id)})
+        updated_employee = map_db_to_employee(updated_employee)
         
         return jsonify({
             'success': True,
@@ -395,12 +432,15 @@ def search_employees():
         }
         
         employees = list(mongo.find(search_filter).limit(20))
+        
         serialized_employees = [serialize_employee(emp) for emp in employees]
+        
+        mapped_employees = [map_db_to_employee(emp) for emp in serialized_employees]
         
         return jsonify({
             'success': True,
-            'data': serialized_employees,
-            'count': len(serialized_employees)
+            'data': mapped_employees,
+            'count': len(mapped_employees)
         }), 200
         
     except Exception as e:
