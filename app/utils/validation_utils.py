@@ -28,6 +28,11 @@ COLUMN_VALIDATION_CONFIG = [
         'required': True
     },
     {
+        'label': 'ROLE_PROFICIENCY',
+        'type': 'string',
+        'required': True
+    },
+    {
         'label': 'DEPARTMENT',
         'type': 'string',
         'required': True
