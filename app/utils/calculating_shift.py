@@ -10,7 +10,7 @@ shift_types = [
   },
   {
     "type": "pm_shift",
-    "label": "AM Shift",
+    "label": "PM Shift",
     "start_time": "17:00",
     "end_time": "01:00"
   },
