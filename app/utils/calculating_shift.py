@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Union
 
 shift_types = [
   {
@@ -25,7 +25,7 @@ shift_types = [
 def generate_time_unit_map(
     planning_horizon_start: datetime,
     planning_horizon_end: datetime,
-    time_block: float | int,
+    time_block: Union[float, int],
 ):
     """Generate a mapping from time units to datetime"""
     time_unit_map = {}
