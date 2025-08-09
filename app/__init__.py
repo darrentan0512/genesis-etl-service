@@ -26,6 +26,7 @@ def create_app(config_class=Config):
     from app.routes.employee import employee_bp
     from app.routes.employee_column_mapping import employee_column_mapping_bp
     from app.routes.schedule_config import schedule_config_bp
+    from app.routes.configs import overall_config_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -33,5 +34,6 @@ def create_app(config_class=Config):
     app.register_blueprint(employee_bp)
     app.register_blueprint(employee_column_mapping_bp)
     app.register_blueprint(schedule_config_bp)
+    app.register_blueprint(overall_config_bp)
     
     return app
