@@ -2,7 +2,7 @@ import random
 from flask import Blueprint, request, jsonify
 from app.models.error_response import ErrorResponse
 from app import mongo
-from app.utils.calculating_shift import calculate_total_time_blocks, generate_time_unit_map, get_datetime_from_time_unit, get_time_unit_from_datetime_and_time, inverse_map, shift_types
+from app.utils.calculating_shift import calculate_total_time_blocks, generate_time_unit_map, get_datetime_from_time_unit, get_time_unit_from_datetime_and_time, inverse_map, shift_types, store_time_mapping_safely
 from bson import ObjectId
 from bson.errors import InvalidId
 import re
@@ -52,18 +52,22 @@ def convert_request_to_mongo_format(data):
     schedule_period = data['SCHEDULE_PERIOD']
     start_date_str = schedule_period['start_date']
     end_date_str = schedule_period['end_date']
+    start_time_str = schedule_period['start_time']
+    end_time_str = schedule_period['end_time']
+    schedule_uuid = f"{data['COMPANY']}_{data['DEPARTMENT']}_{start_date_str}_{end_date_str}"
     
-    # Parse dates
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    # Create full datetime objects combining date and time
+    start_datetime = datetime.strptime(f"{start_date_str} {start_time_str}", '%Y-%m-%d %H:%M')
+    end_datetime = datetime.strptime(f"{end_date_str} {end_time_str}", '%Y-%m-%d %H:%M')
     
-    # Calculate total time blocks
+    # Generate time unit mappings using full datetime range
     time_block_hours = 0.5
-    total_time_blocks = calculate_total_time_blocks(start_date_str, end_date_str, time_block_hours)
+    total_time_blocks = calculate_total_time_blocks(start_datetime, end_datetime, time_block_hours)
     
     # Generate time unit mappings
-    time_unit_map = generate_time_unit_map(start_date, end_date, time_block_hours)
+    time_unit_map = generate_time_unit_map(start_datetime, end_datetime, time_block_hours)
     datetime_to_unit_map = inverse_map(time_unit_map)
+    store_time_mapping_safely(schedule_uuid, time_unit_map, datetime_to_unit_map)
     
     # Group shifts by type and roles
     shift_groups = {}
@@ -98,46 +102,58 @@ def convert_request_to_mongo_format(data):
         
         # Calculate days_applied_to (day indices from start date)
         days_applied_to = []
+        start_time_blocks = []
+        end_time_blocks = []
+        
         for date_str in group_data['dates']:
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             day_index = (date_obj - planning_start_date).days
             days_applied_to.append(day_index)
-        
-        # Calculate time blocks for start and end times
-        # Use the first date to get the time blocks
-        first_date = group_data['dates'][0]
-        start_time_block = get_time_unit_from_datetime_and_time(
-            first_date, group_data['start_time'], datetime_to_unit_map
-        )
-        end_time_block = get_time_unit_from_datetime_and_time(
-            first_date, group_data['end_time'], datetime_to_unit_map
-        )
-        
-        # Handle cross-day shifts (e.g., 17:00 to 01:00 next day)
-        if end_time_block is None or (end_time_block <= start_time_block):
-            # Try next day for end time
-            next_date = (datetime.strptime(first_date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
-            end_time_block = get_time_unit_from_datetime_and_time(
-                next_date, group_data['end_time'], datetime_to_unit_map
+            
+            # Calculate time blocks for this specific date
+            start_time_block = get_time_unit_from_datetime_and_time(
+                date_str, group_data['start_time'], datetime_to_unit_map
             )
+            end_time_block = get_time_unit_from_datetime_and_time(
+                date_str, group_data['end_time'], datetime_to_unit_map
+            )
+            
+            # Handle cross-day shifts (e.g., 17:00 to 01:00 next day)
+            if end_time_block is None or (end_time_block <= start_time_block):
+                # Try next day for end time
+                next_date = (datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+                end_time_block = get_time_unit_from_datetime_and_time(
+                    next_date, group_data['end_time'], datetime_to_unit_map
+                )
+            
+            start_time_blocks.append(start_time_block)
+            end_time_blocks.append(end_time_block)
+        
+        # Sort everything together to maintain consistency
+        combined = list(zip(days_applied_to, start_time_blocks, end_time_blocks))
+        combined.sort(key=lambda x: x[0])  # Sort by day_index
+        
+        days_applied_to, start_time_blocks, end_time_blocks = zip(*combined)
         
         mongo_shift = {
             "shift_uid": shift_uid,
-            "shift_id": f"{shift_type}_{shift_uid}",
-            "start_time_block": start_time_block,
+            "start_time_block": list(start_time_blocks),
             "type": shift_type,
-            "end_time_block": end_time_block,
+            "end_time_block": list(end_time_blocks),
             "role_applied_to": group_data['roles'],
-            "days_applied_to": sorted(days_applied_to)
+            "days_applied_to": list(days_applied_to)
         }
         
         mongo_shifts.append(mongo_shift)
     
     # Build the final MongoDB document
     mongo_doc = {
+        "UUID": schedule_uuid,
         "SCHEDULE_PERIOD": {
             "start_date": start_date_str,
             "end_date": end_date_str,
+            "start_time": start_time_str,
+            "end_time": end_time_str,
             "number_of_days": schedule_period['number_of_days'],
             "total_time_block": total_time_blocks
         },
@@ -158,14 +174,20 @@ def convert_mongo_to_request_format(mongo_doc):
     schedule_period = mongo_doc['SCHEDULE_PERIOD']
     start_date_str = schedule_period['start_date']
     end_date_str = schedule_period['end_date']
+    start_time_str = schedule_period['start_time']
+    end_time_str = schedule_period['end_time']
+    uuid = mongo_doc['uuid']
     
-    # Parse dates
+    # Parse dates and times
     start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
     
-    # Generate time unit mappings
+    # Create full datetime objects combining date and time
+    start_datetime = datetime.strptime(f"{start_date_str} {start_time_str}", '%Y-%m-%d %H:%M')
+    end_datetime = datetime.strptime(f"{end_date_str} {end_time_str}", '%Y-%m-%d %H:%M')
+    
+    # Generate time unit mappings using full datetime range
     time_block_hours = 0.5
-    time_unit_map = generate_time_unit_map(start_date, end_date, time_block_hours)
+    time_unit_map = generate_time_unit_map(start_datetime, end_datetime, time_block_hours)
     
     # Calculate planning start date for day index conversion
     planning_start_date = start_date.date()
@@ -176,9 +198,6 @@ def convert_mongo_to_request_format(mongo_doc):
     for mongo_shift in mongo_doc['SHIFT']:
         # Use stored type field directly
         shift_type = mongo_shift.get('type')
-        if not shift_type:
-            # Fallback: extract from shift_id for backward compatibility
-            shift_type = mongo_shift['shift_id'].split('_')[0]
         
         # Get start_time and end_time from shift_types mapping
         shift_definition = shift_type_mapping.get(shift_type)
@@ -223,9 +242,12 @@ def convert_mongo_to_request_format(mongo_doc):
     
     # Build the request format document
     request_doc = {
+        "UUID": uuid,
         "SCHEDULE_PERIOD": {
             "start_date": start_date_str,
             "end_date": end_date_str,
+            "start_time": start_time_str,
+            "end_time": end_time_str,
             "number_of_days": schedule_period['number_of_days']
         },
         "DEPARTMENT": mongo_doc['DEPARTMENT'],
@@ -367,6 +389,7 @@ def upsert_schedule_config():
             filter_criteria,
             {
                 '$set': {
+                    'uuid': mongo_doc['UUID'],
                     'SCHEDULE_PERIOD': mongo_doc['SCHEDULE_PERIOD'],
                     'DEPARTMENT': mongo_doc['DEPARTMENT'],
                     'SHIFT': mongo_doc['SHIFT'],
