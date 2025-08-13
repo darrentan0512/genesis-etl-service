@@ -38,6 +38,9 @@ class UpstreamError(Exception):
 
     status: int
     detail: str
+    code: str | None = None  # optional machine code for clients
+    # logs-only payload (not returned to clients)
+    raw_upstream: Any | None = None
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
@@ -56,6 +59,9 @@ class UpstreamError(Exception):
         503: "Upstream error: Service unavailable",
         504: "Upstream error: Gateway timed out",
     }
+
+    def __str__(self) -> str:
+        return f"{self.status} {self.message()} :: {self.detail}"
 
     def _message(self) -> str:
         return self._MESSAGE_MAP.get(
@@ -76,6 +82,7 @@ class UpstreamError(Exception):
         if not for_logs:
             data.pop("detail", None)
             data.pop("timestamp", None)
+            data.pop("raw_upstream")
         return {k: v for k, v in data.items() if v is not None}
 
     def to_response(self):
