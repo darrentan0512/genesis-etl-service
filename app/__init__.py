@@ -30,8 +30,8 @@ def create_app(config_class=Config):
     from app.routes.employee_column_mapping import employee_column_mapping_bp
     from app.routes.excel import excel_bp
     from app.routes.main import main_bp
-    from app.routes.run_scheduling import scheduling_bp
     from app.routes.schedule_config import schedule_config_bp
+    from app.routes.scheduling import scheduling_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
