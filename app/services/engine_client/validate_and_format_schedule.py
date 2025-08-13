@@ -1,41 +1,7 @@
-from datetime import datetime
+from app.utils.date_utils import is_ymd, is_iso_z
 from typing import Any
 
 JS_SAFE_MAX = 2**53 - 1
-
-
-def _is_iso_z(dt_str: str) -> bool:
-    """
-    Check if a string is a valid ISO-8601 date-time with 'Z' for UTC.
-
-    Args:
-        dt_str: Date-time string to validate.
-
-    Returns:
-        True if valid, False otherwise.
-    """
-    try:
-        datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        return True
-    except Exception:
-        return False
-
-
-def _is_ymd(s: str) -> bool:
-    """
-    Check if a string is in YYYY-MM-DD format.
-
-    Args:
-        s: Date string to validate.
-
-    Returns:
-        True if valid, False otherwise.
-    """
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except Exception:
-        return False
 
 
 def validate_and_format_schedule(resp: dict) -> list[dict[str, Any]]:
@@ -80,7 +46,7 @@ def validate_and_format_schedule(resp: dict) -> list[dict[str, Any]]:
         return [{"path": "$", "error": "response must be an object"}]
 
     ga = resp.get("generated_at")
-    if not isinstance(ga, str) or not _is_iso_z(ga):
+    if not isinstance(ga, str) or not is_iso_z(ga):
         err("$.generated_at", "must be ISO-8601 string")
 
     data = resp.get("data")
@@ -109,7 +75,7 @@ def validate_and_format_schedule(resp: dict) -> list[dict[str, Any]]:
                     continue
 
                 d = a.get("date")
-                if not isinstance(d, str) or not _is_ymd(d):
+                if not isinstance(d, str) or not is_ymd(d):
                     err(f"{ap}.date", "YYYY-MM-DD required")
 
                 is_off = a.get("is_off")
