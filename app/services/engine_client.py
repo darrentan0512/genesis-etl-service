@@ -1,5 +1,5 @@
 from json import JSONDecodeError
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 
@@ -29,16 +29,21 @@ def run_engine_client(url: str, payload: dict, *, token: Optional[str], timeout:
             # fall back to string if required
             upstream = resp.text
 
-        # vaguely return, do not include full upstream error details
         raise UpstreamError(
-            resp.status_code,
-            resp.reason or "Upstream returned error",
-            # upstream details are not parsed and returned but stored for logging
-            raw_upstream=upstream,
+            resp.status_code, "Upstream Error", raw_upstream=_cap(upstream)
         )
 
     # success 2xx response, but fail upon parsing the json
     try:
         return resp.json()
     except JSONDecodeError:
-        raise UpstreamError(502, "Invalid JSON from upstream", raw_upstream=resp.text)
+        raise UpstreamError(
+            502, "Invalid JSON from upstream", raw_upstream=_cap(resp.text)
+        )
+
+
+def _cap(obj: Any, limit: int = 2000) -> Any:
+    """Truncate large strings for log-friendliness; leave JSON objects/lists as-is."""
+    if isinstance(obj, str) and len(obj) > limit:
+        return obj[:limit] + "…"
+    return obj
