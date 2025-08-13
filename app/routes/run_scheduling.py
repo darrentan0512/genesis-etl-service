@@ -1,10 +1,20 @@
+from __future__ import annotations
+
+from typing import Any
 from uuid import uuid4
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
+from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
+from app.config import Config
 from app.models.error_response import UpstreamError
+from app.services.engine_client import (
+    run_engine_client,  # your function that raises UpstreamError
+)
 
-scheduling_bp = Blueprint("scheduling", __name__)
+# from app.validators.engine import validate_engine_response
+
+scheduling_bp = Blueprint("scheduling", __name__, url_prefix="/api/scheduling")
 
 
 @scheduling_bp.app_errorhandler(UpstreamError)
@@ -36,3 +46,23 @@ def handle_upstream_error(e: UpstreamError):
         ),
         e.status,
     )
+
+
+@scheduling_bp.app_errorhandler(BadRequest)
+def handle_bad_request(e: BadRequest):
+    """
+    ### BadRequest handler
+    Keeps JSON parsing errors consistent across routes in this blueprint.
+    """
+    return jsonify({"success": False, "message": "Invalid JSON body"}), 400
+
+
+@scheduling_bp.app_errorhandler(UnsupportedMediaType)
+def handle_unsupported_media(e: UnsupportedMediaType):
+    """
+    ### UnsupportedMediaType handler
+    Ensures wrong content types return a stable JSON error.
+    """
+    return jsonify(
+        {"success": False, "message": "Content-Type must be application/json"}
+    ), 415
