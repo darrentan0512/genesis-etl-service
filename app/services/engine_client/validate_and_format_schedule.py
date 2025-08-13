@@ -68,30 +68,30 @@ def validate_and_format_schedule(resp: dict) -> list[dict[str, Any]]:
         if not isinstance(assigns, list):
             err(f"{base}.assignments", "must be an array")
         else:
-            for j, a in enumerate(assigns):
+            for j, assign in enumerate(assigns):
                 ap = f"{base}.assignments[{j}]"
-                if not isinstance(a, dict):
+                if not isinstance(assign, dict):
                     err(ap, "must be an object")
                     continue
 
-                d = a.get("date")
+                d = assign.get("date")
                 if not isinstance(d, str) or not is_ymd(d):
                     err(f"{ap}.date", "YYYY-MM-DD required")
 
-                is_off = a.get("is_off")
+                is_off = assign.get("is_off")
                 if not isinstance(is_off, bool):
                     err(f"{ap}.is_off", "must be boolean")
                 else:
                     if is_off:
                         # Off-day: remove fields that shouldn't coexist
-                        a.pop("shift", None)
-                        a.pop("type", None)
+                        assign.pop("shift", None)
+                        assign.pop("type", None)
                     else:
                         # Working day: drop marker to keep payload minimal
-                        a.pop("is_off", None)
+                        assign.pop("is_off", None)
 
                 # Validate remaining fields only if present after mutation
-                sv = a.get("shift")
+                sv = assign.get("shift")
                 if sv is not None:
                     if not isinstance(sv, int):
                         err(f"{ap}.shift", "must be int or null")
@@ -100,7 +100,7 @@ def validate_and_format_schedule(resp: dict) -> list[dict[str, Any]]:
                     ):  # 2**53 - 1 if you need the constant defined
                         err(f"{ap}.shift", "int exceeds JS safe range")
 
-                tval = a.get("type")
+                tval = assign.get("type")
                 if tval is not None and not isinstance(tval, str):
                     err(f"{ap}.type", "must be string")
 
