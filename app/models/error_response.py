@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from flask import jsonify, request
@@ -29,11 +29,20 @@ class ErrorResponse(Exception):
         return jsonify(self.to_dict()), self.status
 
 
+@dataclass
 class UpstreamError(Exception):
     """
     Raised for non-2xx responses or transport failures when connecting
     to scheduling engine.
     """
+
+    status: int
+    detail: str
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
 
     _MESSAGE_MAP = {
         400: "Upstream error: Bad request",
@@ -48,32 +57,46 @@ class UpstreamError(Exception):
         504: "Upstream error: Gateway timed out",
     }
 
-    def __init__(
-        self,
-        status: int,
-        error: str | None = None,
-        *,
-        raw_upstream: object | None = None,
-    ):
+    def _message(self) -> str:
+        return self._MESSAGE_MAP.get(
+            self.status,
+            "Upstream error: Server error"
+            if 500 <= self.status < 600
+            else "Upstream Error",
+        )
+
+    def to_dict(self, *, for_logs: bool = False) -> Dict[str, Any]:
         """
-        Args:
-            status: HTTP status code to return.
-            error_detail: Raw technical error detail (e.g., str(e) from requests).
-            details: Optional structured data from the upstream.
+        ### to_dict
+        Build a dict representation.
+        - When `for_logs=True`, include `detail` and `timestamp`.
+        - When `for_logs=False`, omit those fields to avoid leaking internals.
         """
-        self.status = status
-        self.body = {
+        data = asdict(self)
+        if not for_logs:
+            data.pop("detail", None)
+            data.pop("timestamp", None)
+        return {k: v for k, v in data.items() if v is not None}
+
+    def to_response(self):
+        """
+        ### to_response
+        Flask response for clients: stable, high-level shape.
+        """
+        body = {
             "success": False,
-            "message": self._MESSAGE_MAP.get(
-                status,
-                "Upstream error: Server error"
-                if 500 <= status < 600
-                else "Upstream error",
-            ),
+            "message": self._message(),
+            **self.to_dict(for_logs=False),
         }
+        return jsonify(body), self.status
 
-        if error:
-            self.body["error"] = error  # if required to return to frontend
-
-        self.raw_upstream = raw_upstream
-        super().__init__(f"{status}: {self.body['message']}")
+    def to_logs(self) -> Dict[str, Any]:
+        """
+        ### to_logs
+        Dict for server logs: includes technical detail & timestamp.
+        """
+        log_body = {
+            "message": self._message(),
+            **self.to_dict(for_logs=True),
+        }
+        return log_body
