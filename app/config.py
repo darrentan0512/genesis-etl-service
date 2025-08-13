@@ -1,11 +1,32 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
-    MONGO_URI = os.environ.get('MONGO_URI') or 'mongodb://localhost:27017/flask_mongo_app'
-    RESOURCE_FOLDER = os.environ.get('RESOURCE_FOLDER', 'resources')
-    ALLOWED_EXTENSIONS = {'xls', 'xlsx'}
-    MANDATORY_COLUMNS = {'first_name','middle_name','last_name', 'phone_number', 'email_address', 'department', 'role', 'role_proficiency', 'end_of_probation', 'is_part_time'}
+    SECRET_KEY = os.environ.get("SECRET_KEY") or "you-will-never-guess"
+    MONGO_URI = (
+        os.environ.get("MONGO_URI") or "mongodb://localhost:27017/flask_mongo_app"
+    )
+    RESOURCE_FOLDER = os.environ.get("RESOURCE_FOLDER", "resources")
+    ALLOWED_EXTENSIONS = {"xls", "xlsx"}
+    MANDATORY_COLUMNS = {
+        "first_name",
+        "middle_name",
+        "last_name",
+        "phone_number",
+        "email_address",
+        "department",
+        "role",
+        "role_proficiency",
+        "end_of_probation",
+        "is_part_time",
+    }
+
+    # to connect with engine client
+    ENGINE_BASE_URL = os.environ.get("ENGINE_BASE_URL", "")
+    ENGINE_PATH = os.environ.get("ENGINE_PATH", "/v1/run_engine/schedule")
+    ENGINE_TIMEOUT = float(os.environ.get("ENGINE_TIMEOUT", "10"))
+    ENGINE_TOKEN = os.environ.get("ENGINE_TOKEN", "")  # engine might add auth later
