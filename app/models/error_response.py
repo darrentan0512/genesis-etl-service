@@ -2,6 +2,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from http import HTTPStatus
 from flask import jsonify, request
 
 
@@ -47,29 +48,16 @@ class UpstreamError(Exception):
         .replace("+00:00", "Z")
     )
 
-    _MESSAGE_MAP = {
-        400: "Upstream error: Bad request",
-        401: "Upstream error: Unauthorized",
-        403: "Upstream error: Forbidden",
-        404: "Upstream error: Resource not found",
-        409: "Upstream error: Conflict",
-        422: "Upstream error: Unprocessable entity",
-        429: "Upstream error: Too many requests",
-        502: "Upstream error: Bad gateway",
-        503: "Upstream error: Service unavailable",
-        504: "Upstream error: Gateway timed out",
-    }
-
     def __str__(self) -> str:
         return f"{self.status} {self.message()} :: {self.detail}"
 
     def _message(self) -> str:
-        return self._MESSAGE_MAP.get(
-            self.status,
-            "Upstream error: Server error"
-            if 500 <= self.status < 600
-            else "Upstream Error",
-        )
+        try:
+            phrase = HTTPStatus(self.status).phrase
+        # in case custom status code
+        except ValueError:
+            phrase = "Unknown Status Sode"
+        return f"Upstream error: {phrase}"
 
     def to_dict(self, *, for_logs: bool = False) -> Dict[str, Any]:
         """

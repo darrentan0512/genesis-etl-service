@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import uuid4
 
 from flask import Blueprint, current_app, jsonify, request
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 
 from app.config import Config
 from app.models.error_response import UpstreamError
-from app.services.engine_client import (
+from app.services.engine_client.client_request import (
     run_engine_client,  # your function that raises UpstreamError
 )
-from app.utils.validate_and_format_schedule import validate_and_format_schedule
+from app.services.engine_client.validate_and_format_schedule import (
+    validate_and_format_schedule,
+)
 
 # from app.validators.engine import validate_engine_response
 
