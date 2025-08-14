@@ -39,9 +39,9 @@ class UpstreamError(Exception):
 
     status: int
     detail: str
-    code: str | None = None  # optional machine code for clients
+    code: Optional[str] = field(default=None)  # optional machine code for clients
     # logs-only payload (not returned to clients)
-    raw_upstream: Any | None = None
+    raw_upstream: Optional[Any] = field(default=None)
     timestamp: str = field(
         default_factory=lambda: datetime.now(timezone.utc)
         .isoformat(timespec="seconds")
