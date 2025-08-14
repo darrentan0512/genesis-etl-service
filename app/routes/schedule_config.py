@@ -157,6 +157,7 @@ def convert_request_to_mongo_format(data):
             "number_of_days": schedule_period['number_of_days'],
             "total_time_block": total_time_blocks
         },
+        "COMPANY": data["COMPANY"],
         "DEPARTMENT": data['DEPARTMENT'],
         "SHIFT": mongo_shifts
     }
@@ -251,6 +252,7 @@ def convert_mongo_to_request_format(mongo_doc):
             "number_of_days": schedule_period['number_of_days']
         },
         "DEPARTMENT": mongo_doc['DEPARTMENT'],
+        "COMPANY": mongo_doc["COMPANY"],
         "SHIFT": request_shifts
     }
     
@@ -392,6 +394,7 @@ def upsert_schedule_config():
                     'uuid': mongo_doc['UUID'],
                     'SCHEDULE_PERIOD': mongo_doc['SCHEDULE_PERIOD'],
                     'DEPARTMENT': mongo_doc['DEPARTMENT'],
+                    'COMPANY': mongo_doc['COMPANY'],
                     'SHIFT': mongo_doc['SHIFT'],
                     'updated_at': datetime.now(timezone.utc)
                 },

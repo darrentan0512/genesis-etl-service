@@ -20,6 +20,25 @@ shift_types = [
     "label": "Midnight Shift",
     "start_time": "01:00",
     "end_time": "09:00"
+  },
+  {
+    "type": "weekday_1",
+    "start_time": "11:30",
+    "end_time": "23:00",
+    "label": "Weekday 1 Shift",
+
+  },
+  {
+    "label": "Weekday 2 Shift",
+    "type": "weekday_2",
+    "start_time": "11:30",
+    "end_time": "23:00",
+  },
+  {
+    "label": "Opening Shift",
+    "type": "opening",
+    "start_time": "10:30",
+    "end_time": "22:30",
   }
 ]
 
