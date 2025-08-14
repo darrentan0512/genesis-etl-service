@@ -97,6 +97,36 @@ def get_datetime_from_time_unit(time_unit: int, time_unit_map: dict):
     """Get datetime from time unit using the mapping"""
     return time_unit_map.get(time_unit)
 
+def convert_keys_to_strings(data):
+    """
+    Recursively convert dictionary keys to strings to ensure MongoDB compatibility
+    """
+    if isinstance(data, dict):
+        return {str(key): convert_keys_to_strings(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [convert_keys_to_strings(item) for item in data]
+    else:
+        return data
+    
+def sanitize_data(data):
+    """
+    Sanitize data to ensure it's JSON serializable and MongoDB compatible
+    """
+    try:
+        # Convert keys to strings
+        sanitized = convert_keys_to_strings(data)
+        
+        # Test JSON serialization to catch any other issues
+        import json
+        json.dumps(sanitized, default=str)
+        
+        return sanitized
+    except (TypeError, ValueError) as e:
+        print(f"Data sanitization warning: {e}")
+        # Return empty dict if sanitization fails
+        return {}
+    
+
 def store_time_mapping_safely(uuid, time_unit_map, datetime_to_unit_map):
     """
     Safely store time unit mappings in MongoDB without breaking or giving errors
@@ -119,11 +149,13 @@ def store_time_mapping_safely(uuid, time_unit_map, datetime_to_unit_map):
     if not datetime_to_unit_map:
         datetime_to_unit_map = {}
     
+    safe_time_unit_map = sanitize_data(time_unit_map)
+    safe_datetime_to_unit_map = sanitize_data(datetime_to_unit_map)
     # Prepare the update document
     update_doc = {
         '$set': {
-            'time_unit_map': time_unit_map,
-            'datetime_to_unit_map': datetime_to_unit_map,
+            'time_unit_map': safe_time_unit_map,
+            'datetime_to_unit_map': safe_datetime_to_unit_map,
             'created_at': datetime.utcnow().isoformat() if 'datetime' in globals() else "unknown",
             'updated_at': datetime.utcnow().isoformat() if 'datetime' in globals() else "unknown"
         }
@@ -147,7 +179,7 @@ def store_time_mapping_safely(uuid, time_unit_map, datetime_to_unit_map):
                 'acknowledged': getattr(result, 'acknowledged', True)
             }
         }
-    except:
+    except Exception as e:
         # If MongoDB operation fails, still return success to avoid breaking
         return {
             'success': True,
