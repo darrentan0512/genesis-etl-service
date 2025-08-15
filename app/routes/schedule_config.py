@@ -318,6 +318,10 @@ def validate_schedule_config(data):
         errors.append("DEPARTMENT is required")
     elif not isinstance(data['DEPARTMENT'], str):
         errors.append("DEPARTMENT must be a string")
+    if 'COMPANY' not in data or not data['COMPANY']:
+        errors.append("COMPANY is required")
+    elif not isinstance(data['COMPANY'], str):
+        errors.append("COMPANY must be a string")
     
     # Validate SHIFT
     if 'SHIFT' not in data:
@@ -402,8 +406,8 @@ def upsert_schedule_config():
         mongo_doc['updated_at'] = datetime.now(timezone.utc)
         mongo_doc['created_at'] = datetime.now(timezone.utc)
         
-        # Define the filter for upsert (using DEPARTMENT as the unique identifier)
-        filter_criteria = {'DEPARTMENT': data['DEPARTMENT']}
+        # Define the filter for upsert (using uuid as the unique identifier)
+        filter_criteria = {'uuid': mongo_doc['UUID']}
         
         # Perform upsert operation
         result = mongo.db.schedule_config.update_one(
@@ -469,20 +473,30 @@ def get_schedule_config():
     try:
         # Get department from headers
         department = request.headers.get('department')
+        company = request.headers.get('company')
+        start_date = request.headers.get('startdate')
+        end_date = request.headers.get('enddate')
+        print("TEST: "+str(start_date))
         
-        if not department:
+        if not department or not company:
             return jsonify({
                 'success': False,
-                'message': 'Department header is required'
+                'message': 'Department or Company header is required'
+            }), 400
+        if not start_date or not end_date:
+            return jsonify({
+                'success': False,
+                'message': 'start_date or end_date header is required'
             }), 400
         
+        schedule_uuid = f"{company}_{department}_{start_date}_{end_date}"
         # Query the database
-        schedule_config = mongo.db.schedule_config.find_one({'DEPARTMENT': department})
+        schedule_config = mongo.db.schedule_config.find_one({'uuid': schedule_uuid})
         
         if not schedule_config:
             return jsonify({
                 'success': False,
-                'message': f'Schedule configuration not found for department: {department}'
+                'message': f'Schedule configuration not found for department, company, startdate, enddate: {department} {company} {start_date} {end_date}'
             }), 404
         
         # Convert MongoDB format to request format
