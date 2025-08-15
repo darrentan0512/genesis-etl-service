@@ -186,9 +186,22 @@ def convert_mongo_to_request_format(mongo_doc):
     start_datetime = datetime.strptime(f"{start_date_str} {start_time_str}", '%Y-%m-%d %H:%M')
     end_datetime = datetime.strptime(f"{end_date_str} {end_time_str}", '%Y-%m-%d %H:%M')
     
-    # Generate time unit mappings using full datetime range
-    time_block_hours = 0.5
-    time_unit_map = generate_time_unit_map(start_datetime, end_datetime, time_block_hours)
+    # Query the database for existing mapping
+    time_unit_map_db = mongo.db.mapping_config.find_one({"uuid": uuid})
+
+    if time_unit_map_db and time_unit_map_db.get('time_unit_map'):
+        # Use the existing mapping from database
+        time_unit_map = {}
+    
+        for key, value in time_unit_map_db['time_unit_map'].items():
+            # Convert string key to integer
+            int_key = int(key)
+            # Value is already a datetime object, so use it directly
+            time_unit_map[int_key] = value
+    else:
+        # Generate new mapping if none exists in database
+        time_unit_map = generate_time_unit_map(start_datetime, end_datetime, time_block_hours=0.5)
+    
     
     # Calculate planning start date for day index conversion
     planning_start_date = start_date.date()
@@ -202,37 +215,43 @@ def convert_mongo_to_request_format(mongo_doc):
         
         # Get start_time and end_time from shift_types mapping
         shift_definition = shift_type_mapping.get(shift_type)
-        if shift_definition:
-            start_time_str = shift_definition['start_time']
-            end_time_str = shift_definition['end_time']
-        else:
-            # Fallback: calculate from time blocks if shift type not found
-            start_time_block = mongo_shift['start_time_block']
-            end_time_block = mongo_shift['end_time_block']
-            
-            start_datetime = get_datetime_from_time_unit(start_time_block, time_unit_map)
-            end_datetime = get_datetime_from_time_unit(end_time_block, time_unit_map)
-            
-            if start_datetime and end_datetime:
-                start_time_str = start_datetime.strftime('%H:%M')
-                end_time_str = end_datetime.strftime('%H:%M')
-            else:
-                # Final fallback
-                start_time_str, end_time_str = ('00:00', '00:00')
         
         role_applied_to = mongo_shift['role_applied_to']
         days_applied_to = mongo_shift['days_applied_to']
+        start_time_blocks = mongo_shift['start_time_block']  # This is a list
+        end_time_blocks = mongo_shift['end_time_block']      # This is a list
         
-        # Create individual shift entries for each day
-        for day_index in days_applied_to:
+        # Iterate through each day and its corresponding time blocks
+        for i, day_index in enumerate(days_applied_to):
+            # Get the time blocks for this specific day
+            start_time_block = start_time_blocks[i] if i < len(start_time_blocks) else start_time_blocks[0]
+            end_time_block = end_time_blocks[i] if i < len(end_time_blocks) else end_time_blocks[0]
+            
+            # Try to get times from shift_types mapping first
+            if shift_definition:
+                start_time_str_day = shift_definition['start_time']
+                end_time_str_day = shift_definition['end_time']
+            else:
+                # Fallback: calculate from time blocks
+                start_datetime_day = get_datetime_from_time_unit(start_time_block, time_unit_map)
+                end_datetime_day = get_datetime_from_time_unit(end_time_block, time_unit_map)
+                
+                if start_datetime_day and end_datetime_day:
+                    start_time_str_day = start_datetime_day.strftime('%H:%M')
+                    end_time_str_day = end_datetime_day.strftime('%H:%M')
+                else:
+                    # Final fallback
+                    start_time_str_day, end_time_str_day = ('00:00', '00:00')
+            
+            # Calculate the actual date for this shift
             shift_date = planning_start_date + timedelta(days=day_index)
             shift_date_str = shift_date.strftime('%Y-%m-%d')
             
             request_shift = {
                 "datetime": shift_date_str,
                 "type": shift_type,
-                "start_time": start_time_str,
-                "end_time": end_time_str,
+                "start_time": start_time_str_day,
+                "end_time": end_time_str_day,
                 "role_applied_to": role_applied_to.copy()  # Create a copy to avoid reference issues
             }
             
