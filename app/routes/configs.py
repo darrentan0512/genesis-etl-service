@@ -1,9 +1,11 @@
 import random
-from flask import Blueprint, request, jsonify
-from app.models.error_response import ErrorResponse
-from app import mongo
-from app.utils.calculating_shift import  shift_types
 import re
+
+from flask import Blueprint, jsonify, request
+
+from app import mongo
+from app.models.error_response import ErrorResponse
+from app.utils.calculating_shift import shift_types
 
 overall_config_bp = Blueprint('overall_config', __name__, url_prefix='/api/configs')
 
@@ -159,7 +161,7 @@ def get_role_groups():
             }), 400
             
         # Find all employees and extract unique roles
-        employees = mongo.db.employee.find({}, {"ROLE": 1})
+        employees = mongo.db.employee.find({"DEPARTMENT": department}, {"ROLE": 1})
 
         # Extract unique roles, filter out None/null values
         roles = set()
