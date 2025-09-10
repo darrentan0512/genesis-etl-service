@@ -230,9 +230,6 @@ def _validate_update_payload(data):
     }
 
 
-# --- Update Flask Route ---
-
-
 @overall_config_bp.route("/shift_type/update", methods=["POST"])
 def update_shift_type():
     """
@@ -304,6 +301,74 @@ def update_shift_type():
                 {
                     "success": False,
                     "message": "Shift type with the specified UUID not found.",
+                }
+            ), 404
+
+    except Exception as e:
+        return jsonify(
+            {"success": False, "message": f"An unexpected error occurred: {str(e)}"}
+        ), 500
+
+
+def _validate_delete_payload(data):
+    """
+    Validates that the required fields are present for a delete operation.
+    """
+    if not data:
+        raise ValueError("Request body cannot be empty.")
+
+    required_fields = ["COMPANY", "DEPARTMENT", "uuid"]
+    if not all(field in data for field in required_fields):
+        raise ValueError("Missing required fields: COMPANY, DEPARTMENT, uuid")
+
+    return {
+        "company": data["COMPANY"],
+        "department": data["DEPARTMENT"],
+        "uuid": data["uuid"],
+    }
+
+
+# --- Delete Flask Route ---
+
+
+@overall_config_bp.route("/shift_type/delete", methods=["POST"])
+def delete_shift_type():
+    """
+    Deletes a specific shift type from a configuration document,
+    identified by its UUID.
+    """
+    try:
+        # 1. Get and Validate Request Payload
+        data = request.get_json()
+        try:
+            payload = _validate_delete_payload(data)
+            company = payload["company"]
+            department = payload["department"]
+            shift_uuid = payload["uuid"]
+        except ValueError as e:
+            return jsonify({"success": False, "message": str(e)}), 400
+
+        # 2. Construct and Execute the Atomic Delete Operation
+        query_filter = {"COMPANY": company, "DEPARTMENT": department}
+
+        # The $pull operator removes from an existing array all instances
+        # of a value or values that match a specified condition.
+        update_operation = {"$pull": {"SHIFT_TYPE": {"uuid": shift_uuid}}}
+
+        result = mongo.db.configs.update_one(query_filter, update_operation)
+
+        # 3. Check Result and Return Response
+        if result.modified_count > 0:
+            return jsonify(
+                {"success": True, "message": "Shift type deleted successfully."}
+            ), 200
+        else:
+            # This means no document was modified. This can happen if the
+            # company/department doesn't exist, or if the UUID was not found.
+            return jsonify(
+                {
+                    "success": False,
+                    "message": "Shift not found or already deleted.",
                 }
             ), 404
 
