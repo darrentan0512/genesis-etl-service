@@ -515,13 +515,13 @@ def get_role_groups():
 
         # Extract unique roles, filter out None/null values
         roles = set()
-        for employee in employees:
+        for employee in list(employees):
             if employee.get("ROLE"):
                 roles.add(employee["ROLE"])
 
         # Convert to list and add DEFAULT option
         role_list = sorted(list(roles))
-        role_list.insert(0, "DEFAULT")
+        # role_list.insert(0, "DEFAULT")
         role_set = set(role_list)  # For faster lookup
         print("TEST roles: " + str(role_list))
 
