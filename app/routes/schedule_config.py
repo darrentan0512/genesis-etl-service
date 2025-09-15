@@ -1,5 +1,10 @@
 import random
-from flask import Blueprint, request, jsonify
+import time
+from datetime import datetime, timedelta, timezone
+
+from bson import ObjectId
+from flask import Blueprint, jsonify, request
+
 from app import mongo
 from app.utils.calculating_shift import (
     calculate_total_time_blocks,
@@ -10,8 +15,6 @@ from app.utils.calculating_shift import (
     shift_types,
     store_time_mapping_safely,
 )
-from bson import ObjectId
-from datetime import datetime, timedelta, timezone
 
 schedule_config_bp = Blueprint(
     "schedule_config", __name__, url_prefix="/api/schedule_config"
@@ -38,6 +41,20 @@ def validate_time_format(time_string):
         return True
     except ValueError:
         return False
+
+
+def generate_13_digit_uid_fixed():
+    """Generate a more unique 13-digit identifier."""
+    # Use time.time() for efficiency. Get milliseconds.
+    # Take the last 9 digits to ensure it changes rapidly and fits.
+    time_part = str(int(time.time() * 1000))[-9:]
+
+    # Get a 4-digit random number
+    random_part = str(random.randint(1000, 9999))
+
+    # Combine them to make a 13-digit number
+    uid = int(f"{time_part}{random_part}")
+    return uid
 
 
 def generate_13_digit_uid():
