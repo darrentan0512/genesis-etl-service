@@ -110,7 +110,7 @@ def sanitize_data(data):
     
 
 def store_time_mapping_safely(
-    uuid, time_unit_map, datetime_to_unit_map, department: str, company: str
+    schedule_uuid, time_unit_map, datetime_to_unit_map, department: str, company: str
 ):
     """
     Safely store time unit mappings in MongoDB without breaking or giving errors
@@ -126,7 +126,7 @@ def store_time_mapping_safely(
         dict: Result containing success status and details
     """
     # Set default values to avoid errors
-    if not uuid:
+    if not schedule_uuid:
         uuid = "default_uuid"
     
     if not time_unit_map:
@@ -156,7 +156,7 @@ def store_time_mapping_safely(
     # Try to perform the upsert operation
     try:
         result = mongo.db.mapping_config.update_one(
-            {"uuid": uuid}, update_doc, upsert=True
+            {"schedule_uuid": schedule_uuid}, update_doc, upsert=True
         )
 
         return {
