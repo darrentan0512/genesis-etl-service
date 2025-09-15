@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
+
 from app import mongo
 
 shift_types = [
@@ -100,7 +101,7 @@ def sanitize_data(data):
         # Test JSON serialization to catch any other issues
         import json
         json.dumps(sanitized, default=str)
-        
+
         return sanitized
     except (TypeError, ValueError) as e:
         print(f"Data sanitization warning: {e}")
@@ -108,15 +109,19 @@ def sanitize_data(data):
         return {}
     
 
-def store_time_mapping_safely(uuid, time_unit_map, datetime_to_unit_map):
+def store_time_mapping_safely(
+    uuid, time_unit_map, datetime_to_unit_map, department: str, company: str
+):
     """
     Safely store time unit mappings in MongoDB without breaking or giving errors
-    
+
     Args:
         uuid: Unique identifier for the mapping configuration
         time_unit_map: Time unit mapping dictionary
         datetime_to_unit_map: Datetime to unit mapping dictionary
-    
+        department: Department name of the specific generated time_map
+        company: Company name of the specific generated time_map
+
     Returns:
         dict: Result containing success status and details
     """
@@ -134,41 +139,47 @@ def store_time_mapping_safely(uuid, time_unit_map, datetime_to_unit_map):
     safe_datetime_to_unit_map = sanitize_data(datetime_to_unit_map)
     # Prepare the update document
     update_doc = {
-        '$set': {
-            'time_unit_map': safe_time_unit_map,
-            'datetime_to_unit_map': safe_datetime_to_unit_map,
-            'created_at': datetime.utcnow().isoformat() if 'datetime' in globals() else "unknown",
-            'updated_at': datetime.utcnow().isoformat() if 'datetime' in globals() else "unknown"
+        "$set": {
+            "COMPANY": company,
+            "DEPARTMENT": department,
+            "time_unit_map": safe_time_unit_map,
+            "datetime_to_unit_map": safe_datetime_to_unit_map,
+            "created_at": datetime.utcnow().isoformat()
+            if "datetime" in globals()
+            else "unknown",
+            "updated_at": datetime.utcnow().isoformat()
+            if "datetime" in globals()
+            else "unknown",
         }
     }
-    
+
     # Try to perform the upsert operation
     try:
         result = mongo.db.mapping_config.update_one(
-            {'uuid': uuid},
-            update_doc,
-            upsert=True
+            {"uuid": uuid}, update_doc, upsert=True
         )
-        
+
         return {
-            'success': True,
-            'error': None,
-            'result': {
-                'matched_count': getattr(result, 'matched_count', 0),
-                'modified_count': getattr(result, 'modified_count', 0),
-                'upserted_id': str(result.upserted_id) if hasattr(result, 'upserted_id') and result.upserted_id else None,
-                'acknowledged': getattr(result, 'acknowledged', True)
-            }
+            "success": True,
+            "error": None,
+            "result": {
+                "matched_count": getattr(result, "matched_count", 0),
+                "modified_count": getattr(result, "modified_count", 0),
+                "upserted_id": str(result.upserted_id)
+                if hasattr(result, "upserted_id") and result.upserted_id
+                else None,
+                "acknowledged": getattr(result, "acknowledged", True),
+            },
         }
     except Exception as e:
         # If MongoDB operation fails, still return success to avoid breaking
         return {
-            'success': True,
-            'error': 'MongoDB operation bypassed',
-            'result': {
-                'matched_count': 0,
-                'modified_count': 0,
-                'upserted_id': None,
-                'acknowledged': False
-            }
+            "success": True,
+            "error": "MongoDB operation bypassed",
+            "result": {
+                "matched_count": 0,
+                "modified_count": 0,
+                "upserted_id": None,
+                "acknowledged": False,
+            },
         }
