@@ -264,3 +264,31 @@ def generate_and_save_schedule():
     }
     return jsonify(response), 200
 
+
+@scheduling_bp.route("/get_schedules", methods=["GET"])
+def get_schedules():
+    # Required headers (same contract you had)
+    company = request.headers.get("COMPANY")
+    department = request.headers.get("DEPARTMENT")
+    if not company or not department:
+        return jsonify(
+            {
+                "success": False,
+                "message": "Missing required headers 'COMPANY' and 'DEPARTMENT'",
+            }
+        ), 400
+
+    # Optional filter via query param: ?schedule_uuid=abc or ?schedule_uuid=a,b,c
+    schedule_uuid_param = request.args.get("schedule_uuid", "").strip()
+
+    filter_doc = {"COMPANY": company, "DEPARTMENT": department}
+    if schedule_uuid_param:
+        uuids = [u.strip() for u in schedule_uuid_param.split(",") if u.strip()]
+        if len(uuids) == 1:
+            filter_doc["schedule_uuid"] = uuids[0]
+        elif uuids:
+            filter_doc["schedule_uuid"] = {"$in": uuids}
+
+    # Same projection, same response shape
+    cursor = mongo.db.schedules.find(filter_doc, {"_id": 0})
+    return jsonify({"success": True, "schedules": list(cursor)}), 200
